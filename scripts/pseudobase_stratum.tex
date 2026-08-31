@@ -1,0 +1,31 @@
+% GENERATED -- do not hand-edit. Rebuild with:
+%   python pseudobase_tables.py final3_pos_bench.csv final3_neg_bench.csv
+\begin{table}[!t]
+\caption{PseudoBase split by whether covariation is \emph{available}: an Infernal search finds a family alignment for $101$ of $391$ targets ($26\%$). Where it is available, covariation is the strongest selector we have, ahead of pKiss; where it is not, no alignment-based selector exists at all, and its absence there is a coverage statement rather than a quality one. Every other method is shown on both halves so the two columns are comparable. This is the table behind ``covariation is the strongest selector we have, with $26\%$ reach''.}
+\label{tab:pkbstratum}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lcccccc}
+\toprule
+& \multicolumn{3}{c}{covariation available ($n=101$)} & \multicolumn{3}{c}{not available ($n=290$)} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Method & $F_1$ & PKrec & PPV & $F_1$ & PKrec & PPV \\
+\midrule
+\textit{ensemble $F_1$ oracle} & \textit{0.879} & \textit{0.809} & \textit{0.867} & \textit{0.945} & \textit{0.925} & \textit{0.940} \\
+\textit{ensemble PK oracle} & \textit{0.611} & \textit{0.909} & \textit{0.631} & \textit{0.609} & \textit{0.969} & \textit{0.727} \\
+\textit{random $F_1$ oracle} & \textit{0.688} & \textit{0.692} & \textit{0.705} & \textit{0.792} & \textit{0.640} & \textit{0.840} \\
+\textit{random PK oracle} & \textit{0.352} & \textit{0.935} & \textit{0.359} & \textit{0.473} & \textit{0.968} & \textit{0.524} \\
+\midrule
+pKiss & 0.657 & 0.605 & 0.670 & 0.809 & 0.736 & 0.811 \\
+IPknot & 0.646 & 0.363 & 0.698 & 0.708 & 0.341 & 0.803 \\
+ProbKnot & 0.563 & 0.215 & 0.594 & 0.648 & 0.334 & 0.688 \\
+RNAfold MFE & 0.525 & 0.167 & 0.555 & 0.610 & 0.186 & 0.707 \\
+ours, covariation (MI) & 0.695 & 0.486 & 0.679 & --- & --- & --- \\
+ours, LM field & 0.567 & 0.467 & 0.546 & 0.615 & 0.535 & 0.595 \\
+ours, pair count & 0.540 & 0.435 & 0.491 & 0.663 & 0.605 & 0.604 \\
+ours, closed-form energy & 0.540 & 0.428 & 0.502 & 0.630 & 0.565 & 0.581 \\
+ours, ensemble centroid & 0.546 & 0.174 & 0.627 & 0.536 & 0.172 & 0.706 \\
+\bottomrule
+\end{tabular}
+\end{table}
