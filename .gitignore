@@ -1,0 +1,6 @@
+# generated outputs -- the scripts write these; they are not part of the release
+__pycache__/
+*.pyc
+pseudobase_main.tex
+pseudobase_stratum.tex
+family_table.tex
