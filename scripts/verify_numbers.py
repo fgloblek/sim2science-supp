@@ -54,9 +54,8 @@ def main():
         return "\n".join(out)
 
     # THE PAPER SOURCE IS NOT PART OF THIS BUNDLE. Without it the literal-matching checks
-    # (does the abstract still quote the number the CSV gives?) cannot run, but every check
-    # that recomputes a table from the predictions still can, and those are the ones that
-    # establish the numbers. Point PAPER_TEX at the .tex to enable the rest.
+    # cannot run, but every check that recomputes a table from the predictions still can, and
+    # those are the ones that establish the numbers. Set PAPER_TEX to enable the rest.
     HAVE_TEX = os.path.exists(TEX)
     if HAVE_TEX:
         tex = _strip_comments(open(TEX).read())
@@ -127,12 +126,25 @@ def main():
             fails.append("Table 2's delta column header no longer says 'vs. MFE'")
 
     # ---- Table 3: ArchiveII, all ten families -------------------------------------------
-    # RECOMPUTED FROM THE PER-TARGET CSVs, not from archiveii_cov_report.csv. Those two
-    # disagreed on the matched-random rows -- the report said random PK oracle 0.204 where the
-    # bench CSV gives 0.171 -- because the random ensemble is redrawn every run and the two
-    # files came from different draws. Deterministic rows matched exactly, which is what
-    # identified the cause. Recomputing here from the same CSVs that produced the table makes
-    # the paper single-sourced, and would catch a future redraw instead of hiding it.
+    # READ FROM THE PER-TARGET CSV COLUMNS, NOT RECOMPUTED FROM pred_db.
+    #
+    # pred_db is a LOSSY record for heavily knotted structures. Extended dot-bracket offers four
+    # bracket types, ()[]{}<>, and a pair that cannot be assigned one is silently dropped when
+    # the structure is written out. The matched random ensemble packs helices greedily from a
+    # randomly ordered vocabulary, so it produces far more knotted structures than thermodynamics
+    # ever does: 1052 of 1063 random structures exhaust all four levels, and 970 of them lose
+    # pairs -- 14.5 on average, up to 74. Every other tool round-trips (at most a dozen targets,
+    # mean 0.00, which is rounding in the ppv/sty columns).
+    #
+    # Because the dropped pairs are mostly WRONG ones, recomputing from pred_db raises PPV and
+    # inflates F1: the random F1 oracle reads 0.150 from the columns and 0.157 recomputed, and
+    # the random PK oracle's PKrec reads 0.204 against 0.171. The columns are computed before
+    # serialisation and are the correct ones. An earlier version of this file recomputed
+    # everything and mis-diagnosed the difference as the random pool being redrawn per run.
+    #
+    # So: F1/PPV/Sty/PKrec come from the columns, EXCEPT PKrec for the external tools, whose
+    # pk_sty column uses the inflated symmetric convention and must be recomputed -- which is
+    # safe precisely because those tools round-trip. _roundtrip_guard below enforces that.
     # IPknot was benchmarked on its own, so its rows arrive in a separate file.
     import statistics as _st
 
@@ -146,14 +158,23 @@ def main():
                 d[f[0]] = f[2]
         return d
 
+    EXTERNAL = {"pkiss", "ipknot", "probknot", "rnafold"}   # pk_sty column uses the wrong convention
+
     def _load(*paths):
+        """tool -> id -> (pred_db, f1, ppv, sty, pk_sty). The numeric columns were computed
+        before the structure was serialised, so they survive the bracket-depth loss."""
         per = _dd(dict)
         for p in paths:
             if not os.path.exists(p):
                 continue
             for r in _csv.DictReader(open(p)):
-                if r.get("pred_db") not in (None, "", "NA"):
-                    per[r["tool"]].setdefault(r["id"], r["pred_db"])
+                if r.get("pred_db") in (None, "", "NA") or not r.get("f1"):
+                    continue
+                def g(k):
+                    v = r.get(k)
+                    return float(v) if v not in (None, "", "nan") else None
+                per[r["tool"]].setdefault(r["id"], (r["pred_db"], g("f1"), g("ppv"),
+                                                    g("sty"), g("pk_sty")))
         return per
 
     def _pairf1(pred, ref):
@@ -175,20 +196,41 @@ def main():
                 g[i.split("|")[0]].append(v)
             return _st.mean([_st.mean(v) for v in g.values()]) if g else float("nan")
 
+        def _roundtrip_guard():
+            """Fail if a tool whose PKrec we recompute has a pred_db that does not round-trip.
+            The random rows are expected to lose pairs and are read from the columns instead."""
+            for tool in EXTERNAL:
+                bad = 0
+                for i, (pdb, f1c, ppv, sty, _) in AP.get(tool, {}).items():
+                    if i not in NPK or not ppv or not sty:
+                        continue
+                    implied = sty * len(dbp(NPK[i])) / ppv
+                    if implied - len(dbp(pdb)) > 0.5:
+                        bad += 1
+                n = len(AP.get(tool, {}))
+                if n and bad > 0.01 * n:
+                    fails.append(f"{tool}: pred_db loses pairs on {bad}/{n} targets, so its "
+                                 "recomputed PKrec is not trustworthy (bracket-depth overflow)")
+        _roundtrip_guard()
+
         def _row(tool):
             ids = [i for i in AP.get(tool, {}) if i in NPK]
             if not ids:
                 return None
             F, P, S, K, X = {}, {}, {}, {}, {}
             for i in ids:
-                pr = dbp(AP[tool][i]); npk = native_pk_pairs(NPK[i])
-                F[i], P[i], S[i] = _pairf1(pr, dbp(NPK[i]))
-                if npk:
-                    K[i] = len(pr & npk) / len(npk)
-                X[i] = 1.0 if crossing_pairs(pr) else 0.0
+                pdb, f1c, ppv, sty, pk = AP[tool][i]
+                F[i], P[i], S[i] = f1c, ppv, sty          # columns: pre-serialisation, correct
+                if tool in EXTERNAL:                      # wrong convention in the column
+                    npk = native_pk_pairs(NPK[i])
+                    if npk:
+                        K[i] = len(dbp(pdb) & npk) / len(npk)
+                elif pk is not None:
+                    K[i] = pk
+                X[i] = 1.0 if crossing_pairs(dbp(pdb)) else 0.0
             nids = [i for i in AN.get(tool, {}) if i in NNP]
-            FP = {i: (1.0 if crossing_pairs(dbp(AN[tool][i])) else 0.0) for i in nids}
-            FN = {i: _pairf1(dbp(AN[tool][i]), dbp(NNP[i]))[0] for i in nids}
+            FP = {i: (1.0 if crossing_pairs(dbp(AN[tool][i][0])) else 0.0) for i in nids}
+            FN = {i: AN[tool][i][1] for i in nids if AN[tool][i][1] is not None}
             J = _fam_mean(X) - _fam_mean(FP) if FP else None
             return (_fam_mean(F), _fam_mean(P), _fam_mean(S), _fam_mean(K), J,
                     _fam_mean(FN) if FN else None)
@@ -196,8 +238,8 @@ def main():
         T2 = {
             "ours_oracle":      (0.638, 0.616, 0.669, 0.346, +0.233, 0.722),
             "ours_pk_oracle":   (0.487, 0.472, 0.512, 0.702, None,   None),
-            "random_oracle":    (0.157, 0.187, 0.139, 0.091, +0.013, 0.325),
-            "random_pk_oracle": (0.039, 0.047, 0.034, 0.171, None,   None),
+            "random_oracle":    (0.150, 0.159, 0.145, 0.100, +0.013, 0.323),
+            "random_pk_oracle": (0.037, 0.039, 0.037, 0.204, None,   None),
             "mi_mea0.5":        (0.599, 0.562, 0.649, 0.300, +0.232, 0.629),
             "ipknot":           (0.536, 0.549, 0.536, 0.266, +0.181, 0.604),
             "probknot":         (0.529, 0.502, 0.569, 0.238, +0.024, 0.561),
