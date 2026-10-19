@@ -18,7 +18,7 @@ table in the paper. Each number can therefore be re-derived from the predictions
     python pseudobase_tables.py ../results/final3_pos_bench.csv ../results/final3_neg_bench.csv
     python family_table.py ../results/archiveii_pk_bench.csv ../data/archiveii_pk.tsv \
                            ../results/ipknot_ext_pk.csv > family_table.tex
-    python verify_numbers.py
+    PAPER_TEX=/path/to/sim2science_pk_v6_camera.tex python verify_numbers.py   # PAPER_TEX optional
 
 Python 3 and NumPy only. `verify_numbers.py` recomputes every benchmark number in the paper
 from `pred_db` and fails loudly on any mismatch. Point `PAPER_TEX` at the paper source to
@@ -27,10 +27,17 @@ literal-matching checks are skipped and the recomputations still run.
 
 ## What is NOT here
 
-The generation pipeline. Building the candidate pools requires the closed-form pseudoknot free
-energy of Appendix B, which is the subject of a separate manuscript in preparation and is not
-included, so the pools cannot be regenerated from this release. Everything downstream of the
-pools -- every selector, metric and table -- is fully reproducible from what is here.
+The generation pipeline and the closed-form pseudoknot free energy of Appendix B (the subject of
+a separate manuscript in preparation). Generation itself uses only ViennaRNA and helix
+enumeration; the energy enters only as one selector and does not affect which candidates enter
+the pools. The pools cannot be regenerated from this release, but everything downstream of them
+-- every selector, metric and table -- is reproducible from what is here.
+
+## Versions
+
+This release matches the camera-ready paper. The closed-form-energy rows (`tool = ours_energy`)
+are the energy of the companion manuscript, selected over the same pools; every other row is
+unchanged from the reviewed submission, which is tagged `submission` in this repository.
 
 ## Two conventions worth knowing
 

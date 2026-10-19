@@ -14,7 +14,7 @@ from pkutils import find, dbp, native_pk_pairs, crossing_pairs
 
 BOTH = "report_vs_mfe.csv"            # ensemble-mode=both
 AUG = "augment_report_vs_mfe.csv"     # ensemble-mode=augment
-TEX = os.environ.get("PAPER_TEX", "sim2science_pk.tex")
+TEX = os.environ.get("PAPER_TEX", "sim2science_pk_v6_camera.tex")
 
 
 def load(path):
@@ -120,7 +120,7 @@ def main():
             return sum(d) / len(d)
         for tool, want in (("ours_oracle", +0.126), ("mi_mea0.5", +0.084),
                            ("lm_mea0.5", -0.013), ("pkiss", -0.100),
-                           ("probknot", +0.015)):
+                           ("probknot", +0.015), ("ours_energy", -0.010)):
             check(f"T2 dF1-vs-MFE {tool}", dvs_mfe(tool), want, tol=1e-3)
         if HAVE_TEX and r"$\Delta F_1$ vs.\ MFE" not in tex and r"\Delta F_1$ vs.\ MFE" not in tex:
             fails.append("Table 2's delta column header no longer says 'vs. MFE'")
@@ -245,7 +245,7 @@ def main():
             "probknot":         (0.529, 0.502, 0.569, 0.238, +0.024, 0.561),
             "mfe":              (0.512, 0.477, 0.560, 0.239,  0.000, 0.564),
             "lm_mea0.5":        (0.499, 0.486, 0.525, 0.303, +0.336, 0.539),
-            "ours_energy":      (0.481, 0.438, 0.541, 0.242,  0.000, 0.485),
+            "ours_energy":      (0.502, 0.462, 0.557, 0.271, +0.217, 0.546),
             "ours_centroid":    (0.477, 0.497, 0.469, 0.208, +0.033, 0.522),
             "ours_count":       (0.458, 0.414, 0.520, 0.241, +0.014, 0.492),
             "pkiss":            (0.441, 0.416, 0.474, 0.227, +0.241, 0.516),
